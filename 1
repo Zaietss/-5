@@ -1,82 +1,118 @@
 #include <iostream>
 #include <vector>
-#include <string>
-#include <algorithm>
 
 class Plane {
-public:
-    Plane(std::string name, double fuel, bool is_in_air = true, bool is_landing = false)
-        : name(name), fuel(fuel), is_in_air(is_in_air), is_landing(is_landing) {}
+    int id;
+    int destination;
+    bool inAir;
 
-    std::string name;
-    double fuel;
-    bool is_in_air;
-    bool is_landing;
+public:
+    Plane(int _id, int _destination) : id(_id), destination(_destination), inAir(true) {}
+
+    int getID() const { return id; }
+    int getDestination() const { return destination; }
+    bool isInAir() const { return inAir; }
+
+    void setAir(bool bInAir) {
+        inAir = bInAir;
+    }
 };
 
-class PlanesControl {
+class ControlTower {
+    std::vector<Plane*> planes;
+    int capacity;
+
 public:
-    PlanesControl(std::vector<Plane>& planes) : planes(planes) {}
+    ControlTower(int _capacity) : capacity(_capacity) {}
 
-    virtual void ProcessTick() {
-        if (planes.empty()) {
-            std::cout << "No planes remaining." << std::endl;
-            return;
+    void Add(Plane* p) {
+        if (planes.size() < capacity) {
+            planes.push_back(p);
         }
-
-        for (Plane& plane : planes) {
-            std::cout << "Processing " << plane.name << std::endl;
+        else {
+            std::cout << "Control tower is full. Unable to add more planes." << std::endl;
         }
     }
 
-protected:
-    std::vector<Plane>& planes;
-};
+    const std::vector<Plane*>& getPlanes() const {
+        return planes;
+    }
 
-class AirControl : public PlanesControl {
-public:
-    AirControl(std::vector<Plane>& planes) : PlanesControl(planes) {}
-
-    void ProcessTick() override {
-        if (planes.empty()) {
-            std::cout << "No planes remaining." << std::endl;
-            return;
-        }
-
-        auto new_end = std::remove_if(planes.begin(), planes.end(), [this](Plane& plane) {
-            if (plane.fuel <= 0) {
-                std::cout << "Plane " << plane.name << " has run out of fuel and crashed!" << std::endl;
-                return true;
-            }
-            else if (plane.is_in_air && plane.is_landing) {
-                std::cout << "Plane " << plane.name << " has started landing." << std::endl;
-                plane.is_in_air = false;
+    void ProcessTick() {
+        for (auto it = planes.begin(); it != planes.end(); ) {
+            Plane* p = *it;
+            if (!p->isInAir()) {
+                std::cout << "Plane " << p->getID() << " has landed." << std::endl;
+                it = planes.erase(it);
+                delete p;
             }
             else {
-                PlanesControl::ProcessTick();
-                if (!plane.is_in_air && plane.is_landing) {
-                    std::cout << "Plane " << plane.name << " has successfully landed." << std::endl;
-                }
+                ++it;
             }
-            return false;
-            });
+        }
+    }
+};
 
-        planes.erase(new_end, planes.end());
-        std::cout << "Remaining planes: " << planes.size() << std::endl;
+class Airport {
+    std::string name;
+    ControlTower airControl;
+    ControlTower groundControl;
+
+public:
+    Airport(std::string _name, int airControlCapacity, int groundControlCapacity)
+        : name(_name), airControl(airControlCapacity), groundControl(groundControlCapacity) {}
+
+    ~Airport() {
+        for (Plane* p : airControl.getPlanes()) {
+            delete p;
+        }
+        for (Plane* p : groundControl.getPlanes()) {
+            delete p;
+        }
+    }
+
+    void Add(Plane* p, bool bInAir = true) {
+        if (p) {
+            p->setAir(bInAir);
+            if (bInAir) {
+                airControl.Add(p);
+            }
+            else {
+                groundControl.Add(p);
+            }
+        }
+    }
+
+    void ProcessTick() {
+        airControl.ProcessTick();
+        groundControl.ProcessTick();
+    }
+
+    void Print() {
+        std::cout << "Planes controlled by Airport " << name << ":" << std::endl;
+        for (const auto& p : airControl.getPlanes()) {
+            std::cout << "Plane " << p->getID() << " (Destination: " << p->getDestination() << ")" << std::endl;
+        }
+        for (const auto& p : groundControl.getPlanes()) {
+            std::cout << "Plane " << p->getID() << " (Destination: " << p->getDestination() << ")" << std::endl;
+        }
     }
 };
 
 int main() {
-    std::vector<Plane> planes;
-    planes.push_back(Plane("Plane 1", 1000.0));
-    planes.push_back(Plane("Plane 2", 500.0));
-    planes.push_back(Plane("Plane 3", 200.0, true, true));
+    Airport port("Lviv", 10, 10);
+    port.Add(new Plane(12, 15));
+    port.Add(new Plane(13, 25));
+    port.Add(new Plane(14, 15));
 
-    AirControl airControl(planes);
-
-    for (int i = 0; i < 5; i++) {
-        airControl.ProcessTick();
+    std::cout << "Running:" << std::endl;
+    for (int i = 0; i < 25; i++) {
+        std::cout << "Time Tick " << i << std::endl;
+        port.ProcessTick();
     }
+
+    std::cout << "Final state:" << std::endl;
+    port.Print();
 
     return 0;
 }
