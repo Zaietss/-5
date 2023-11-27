@@ -2,93 +2,68 @@
 #include <vector>
 #include <string>
 
-using namespace std;
+class Object {
+public:
+    Object(int _id, const std::string& _state) : id(_id), state(_state) {}
+
+    int getID() const { return id; }
+    std::string getState() const { return state; }
+
+private:
+    int id;
+    std::string state;
+};
 
 class Airport {
-    // реалізація класу Airport
+    std::string name;
+    std::vector<Object> objects;
+
 public:
-    void ProcessTick() {
-        // Реалізація обробки кроку моделі
+    Airport(std::string _name) : name(_name) {}
+
+    void AddObject(const Object& obj) {
+        objects.push_back(obj);
     }
-};
 
-typedef void (*ptDlgCommandFunc)(Airport& port);
+    const std::vector<Object>& getObjects() const {
+        return objects;
+    }
 
-class DlgCommand {
-    string m_sName;
-    ptDlgCommandFunc m_pFunc;
-
-public:
-    DlgCommand(const char* sName, ptDlgCommandFunc pFunc = nullptr)
-        : m_sName(sName), m_pFunc(pFunc) {}
-
-    ~DlgCommand() {}
-
-    const char* GetName() { return m_sName.c_str(); }
-
-    void Run(Airport& port) {
-        if (m_pFunc) {
-            m_pFunc(port);
+    void Print() const {
+        std::cout << "Objects in Airport " << name << ":" << std::endl;
+        for (const auto& obj : objects) {
+            std::cout << "Object ID: " << obj.getID() << std::endl;
+            std::cout << "Object State: " << obj.getState() << std::endl;
+            std::cout << "------------------------------" << std::endl;
         }
     }
 };
 
-class DialogManager {
-    vector<DlgCommand*> m_aCommands;
-    Airport& m_refAirport;
+void Show(Airport& port) {
+    std::cout << "List of objects in the model:" << std::endl;
+    const std::vector<Object>& objects = port.getObjects();
 
-public:
-    DialogManager(Airport& port) : m_refAirport(port) {
-        m_aCommands.push_back(new DlgCommand("Quit"));
-    }
-
-    ~DialogManager() {
-        for (DlgCommand* cmd : m_aCommands) {
-            delete cmd;
-        }
-    }
-
-    void RegisterCommand(const char* sName, ptDlgCommandFunc pFunc) {
-        m_aCommands.push_back(new DlgCommand(sName, pFunc));
-    }
-
-    void Run() {
-        int nCommand = 1;
-        while (nCommand) {
-            cout << endl;
-            for (size_t i = 0; i < m_aCommands.size(); i++)
-                cout << i << ". " << m_aCommands[i]->GetName() << endl;
-
-            cout << "Enter command: ";
-            cin >> nCommand;
-
-            if ((nCommand >= 0) && (nCommand < static_cast<int>(m_aCommands.size()))) {
-                m_aCommands[nCommand]->Run(m_refAirport);
-            }
-            else {
-                cout << "Invalid command." << endl;
-            }
-        }
-    }
-};
-
-void Process(Airport& port) {
-    int nTicks = 0;
-    cout << "Input ticks count: ";
-    cin >> nTicks;
-
-    for (int i = 0; i < nTicks; i++) {
-        port.ProcessTick();
+    for (const Object& obj : objects) {
+        std::cout << "Object ID: " << obj.getID() << std::endl;
+        std::cout << "Object State: " << obj.getState() << std::endl;
+        std::cout << "------------------------------" << std::endl;
     }
 }
 
 int main() {
-    Airport airport;  
-    DialogManager mgr(airport);
+    Airport airport("LvivAirport");
 
-    mgr.RegisterCommand("Process", Process);
+    // Додаю об'єкти в аеропорт для тестування
+    Object obj1(1, "Active");
+    Object obj2(2, "Inactive");
 
-    mgr.Run();
+    airport.AddObject(obj1);
+    airport.AddObject(obj2);
+
+    // ...
+
+    // Зареєструю команду Show з функцією Show
+    Show(airport);
 
     return 0;
 }
