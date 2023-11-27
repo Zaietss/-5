@@ -1,118 +1,94 @@
 #include <iostream>
 #include <vector>
+#include <string>
 
-class Plane {
-    int id;
-    int destination;
-    bool inAir;
-
-public:
-    Plane(int _id, int _destination) : id(_id), destination(_destination), inAir(true) {}
-
-    int getID() const { return id; }
-    int getDestination() const { return destination; }
-    bool isInAir() const { return inAir; }
-
-    void setAir(bool bInAir) {
-        inAir = bInAir;
-    }
-};
-
-class ControlTower {
-    std::vector<Plane*> planes;
-    int capacity;
-
-public:
-    ControlTower(int _capacity) : capacity(_capacity) {}
-
-    void Add(Plane* p) {
-        if (planes.size() < capacity) {
-            planes.push_back(p);
-        }
-        else {
-            std::cout << "Control tower is full. Unable to add more planes." << std::endl;
-        }
-    }
-
-    const std::vector<Plane*>& getPlanes() const {
-        return planes;
-    }
-
-    void ProcessTick() {
-        for (auto it = planes.begin(); it != planes.end(); ) {
-            Plane* p = *it;
-            if (!p->isInAir()) {
-                std::cout << "Plane " << p->getID() << " has landed." << std::endl;
-                it = planes.erase(it);
-                delete p;
-            }
-            else {
-                ++it;
-            }
-        }
-    }
-};
+using namespace std;
 
 class Airport {
-    std::string name;
-    ControlTower airControl;
-    ControlTower groundControl;
+    // реалізація класу Airport
+public:
+    void ProcessTick() {
+        // Реалізація обробки кроку моделі
+    }
+};
+
+typedef void (*ptDlgCommandFunc)(Airport& port);
+
+class DlgCommand {
+    string m_sName;
+    ptDlgCommandFunc m_pFunc;
 
 public:
-    Airport(std::string _name, int airControlCapacity, int groundControlCapacity)
-        : name(_name), airControl(airControlCapacity), groundControl(groundControlCapacity) {}
+    DlgCommand(const char* sName, ptDlgCommandFunc pFunc = nullptr)
+        : m_sName(sName), m_pFunc(pFunc) {}
 
-    ~Airport() {
-        for (Plane* p : airControl.getPlanes()) {
-            delete p;
-        }
-        for (Plane* p : groundControl.getPlanes()) {
-            delete p;
-        }
-    }
+    ~DlgCommand() {}
 
-    void Add(Plane* p, bool bInAir = true) {
-        if (p) {
-            p->setAir(bInAir);
-            if (bInAir) {
-                airControl.Add(p);
-            }
-            else {
-                groundControl.Add(p);
-            }
-        }
-    }
+    const char* GetName() { return m_sName.c_str(); }
 
-    void ProcessTick() {
-        airControl.ProcessTick();
-        groundControl.ProcessTick();
-    }
-
-    void Print() {
-        std::cout << "Planes controlled by Airport " << name << ":" << std::endl;
-        for (const auto& p : airControl.getPlanes()) {
-            std::cout << "Plane " << p->getID() << " (Destination: " << p->getDestination() << ")" << std::endl;
-        }
-        for (const auto& p : groundControl.getPlanes()) {
-            std::cout << "Plane " << p->getID() << " (Destination: " << p->getDestination() << ")" << std::endl;
+    void Run(Airport& port) {
+        if (m_pFunc) {
+            m_pFunc(port);
         }
     }
 };
 
-int main() {
-    Airport port("Lviv", 10, 10);
-    port.Add(new Plane(12, 15));
-    port.Add(new Plane(13, 25));
-    port.Add(new Plane(14, 15));
+class DialogManager {
+    vector<DlgCommand*> m_aCommands;
+    Airport& m_refAirport;
 
-    std::cout << "Running:" << std::endl;
-    for (int i = 0; i < 25; i++) {
-        std::cout << "Time Tick " << i << std::endl;
-        port.ProcessTick();
+public:
+    DialogManager(Airport& port) : m_refAirport(port) {
+        m_aCommands.push_back(new DlgCommand("Quit"));
     }
 
-    std::cout << "Final state:" << std::endl;
-    port.Print();
+    ~DialogManager() {
+        for (DlgCommand* cmd : m_aCommands) {
+            delete cmd;
+        }
+    }
+
+    void RegisterCommand(const char* sName, ptDlgCommandFunc pFunc) {
+        m_aCommands.push_back(new DlgCommand(sName, pFunc));
+    }
+
+    void Run() {
+        int nCommand = 1;
+        while (nCommand) {
+            cout << endl;
+            for (size_t i = 0; i < m_aCommands.size(); i++)
+                cout << i << ". " << m_aCommands[i]->GetName() << endl;
+
+            cout << "Enter command: ";
+            cin >> nCommand;
+
+            if ((nCommand >= 0) && (nCommand < static_cast<int>(m_aCommands.size()))) {
+                m_aCommands[nCommand]->Run(m_refAirport);
+            }
+            else {
+                cout << "Invalid command." << endl;
+            }
+        }
+    }
+};
+
+void Process(Airport& port) {
+    int nTicks = 0;
+    cout << "Input ticks count: ";
+    cin >> nTicks;
+
+    for (int i = 0; i < nTicks; i++) {
+        port.ProcessTick();
+    }
+}
+
+int main() {
+    Airport airport;  
+    DialogManager mgr(airport);
+
+    mgr.RegisterCommand("Process", Process);
+
+    mgr.Run();
 
     return 0;
 }
