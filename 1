@@ -1,83 +1,82 @@
-#include <iostream> 
-#include <vector> 
-#include <string> 
-#include <algorithm> // Включити для використання std::remove 
- 
-class Plane { 
-public: 
-    Plane(std::string name, double fuel, bool is_in_air = true, bool is_landing = false) 
-        : name(name), fuel(fuel), is_in_air(is_in_air), is_landing(is_landing) {} 
- 
-    std::string name; 
-    double fuel; 
-    bool is_in_air; 
-    bool is_landing; 
-}; 
- 
-class PlanesControl { 
-public: 
-    PlanesControl(std::vector<Plane>& planes) : planes(planes) {} 1.1 спробуй цей код 
- 
-    void ProcessTick() { 
-        if (planes.empty()) { 
-            std::cout << "No planes remaining." << std::endl; 
-            return; 
-        } 
- 
-        for (Plane& plane : planes) { 
-            std::cout << "Processing " << plane.name << std::endl; 
-        } 
-    } 
- 
-protected: 
-    std::vector<Plane>& planes; 
-}; 
- 
-class AirControl : public PlanesControl { 
-public: 
-    AirControl(std::vector<Plane>& planes) : PlanesControl(planes) {} 
- 
-    void ProcessTick() override { 
-        if (planes.empty()) { 
-            std::cout << "No planes remaining." << std::endl; 
-            return; 
-        } 
- 
-        auto new_end = std::remove_if(planes.begin(), planes.end(), [](const Plane& plane) { 
-            if (plane.fuel <= 0) { 
-                std::cout << "Plane " << plane.name << " has run out of fuel and crashed!" << std::endl; 
-                return true; // Видаляти літак 
-            } 
-            else if (plane.is_landing) { 
-                std::cout << "Plane " << plane.name << " has started landing." << std::endl; 
-                plane.is_in_air = false; 
-            } 
-            else { 
-                PlanesControl::ProcessTick(); 
-                if (plane.is_landing) { 
-                    std::cout << "Plane " << plane.name << " has successfully landed." << std::endl; 
-                    plane.is_in_air = false; 
-                } 
-            } 
-            return false; // Не видаляти літак 
-        }); 
- 
-        planes.erase(new_end, planes.end()); 
-    } 
-}; 
- 
-int main() { 
-    std::vector<Plane> planes; 
-    planes.push_back(Plane("Plane 1", 1000.0)); 
-    planes.push_back(Plane("Plane 2", 500.0)); 
-    planes.push_back(Plane("Plane 3", 200.0, true, true)); 
- 
-    AirControl airControl(planes); 
- 
-    // Симуляція керування літаками протягом декількох ітерацій 
-    for (int i = 0; i < 5; i++) { 
-        airControl.ProcessTick(); 
-    } 
- 
-    return 0; 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+class Plane {
+public:
+    Plane(std::string name, double fuel, bool is_in_air = true, bool is_landing = false)
+        : name(name), fuel(fuel), is_in_air(is_in_air), is_landing(is_landing) {}
+
+    std::string name;
+    double fuel;
+    bool is_in_air;
+    bool is_landing;
+};
+
+class PlanesControl {
+public:
+    PlanesControl(std::vector<Plane>& planes) : planes(planes) {}
+
+    virtual void ProcessTick() {
+        if (planes.empty()) {
+            std::cout << "No planes remaining." << std::endl;
+            return;
+        }
+
+        for (Plane& plane : planes) {
+            std::cout << "Processing " << plane.name << std::endl;
+        }
+    }
+
+protected:
+    std::vector<Plane>& planes;
+};
+
+class AirControl : public PlanesControl {
+public:
+    AirControl(std::vector<Plane>& planes) : PlanesControl(planes) {}
+
+    void ProcessTick() override {
+        if (planes.empty()) {
+            std::cout << "No planes remaining." << std::endl;
+            return;
+        }
+
+        auto new_end = std::remove_if(planes.begin(), planes.end(), [this](Plane& plane) {
+            if (plane.fuel <= 0) {
+                std::cout << "Plane " << plane.name << " has run out of fuel and crashed!" << std::endl;
+                return true;
+            }
+            else if (plane.is_in_air && plane.is_landing) {
+                std::cout << "Plane " << plane.name << " has started landing." << std::endl;
+                plane.is_in_air = false;
+            }
+            else {
+                PlanesControl::ProcessTick();
+                if (!plane.is_in_air && plane.is_landing) {
+                    std::cout << "Plane " << plane.name << " has successfully landed." << std::endl;
+                }
+            }
+            return false;
+            });
+
+        planes.erase(new_end, planes.end());
+        std::cout << "Remaining planes: " << planes.size() << std::endl;
+    }
+};
+
+int main() {
+    std::vector<Plane> planes;
+    planes.push_back(Plane("Plane 1", 1000.0));
+    planes.push_back(Plane("Plane 2", 500.0));
+    planes.push_back(Plane("Plane 3", 200.0, true, true));
+
+    AirControl airControl(planes);
+
+    for (int i = 0; i < 5; i++) {
+        airControl.ProcessTick();
+    }
+
+    return 0;
 }
