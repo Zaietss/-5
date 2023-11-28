@@ -13,125 +13,117 @@ private:
     std::string location;
 };
 
-class Airport {
+class Stat {
+private:
+    int timer = 0;
+    int successfulLandings = 0;
+    int successfulTakeoffs = 0;
+    int crashes = 0;
+
 public:
-    Airport(std::string name) : name(name), m_pOutputPlane(nullptr) {}
+    int getTimer() const { return timer; }
+    int getSuccessfulLandings() const { return successfulLandings; }
+    int getSuccessfulTakeoffs() const { return successfulTakeoffs; }
+    int getCrashes() const { return crashes; }
 
-    bool Add(int code, std::string location) {
-        if (code == 0) {
-            std::cout << "Invalid plane code." << std::endl;
-            return false;
-        }
-
-        if (FindPlaneByCode(code)) {
-            std::cout << "#" << code << " already exists in the model." << std::endl;
-            return false;
-        }
-
-        Plane* plane = new Plane(code, location);
-
-        if (location == "in_air")
-            m_pOutputPlane = plane;
-        else if (location == "landing")
-            landingPlanes.push_back(plane);
-        else if (location == "taking_off")
-            takingoffPlanes.push_back(plane);
-        else {
-            std::cout << "Invalid location. Plane not added." << std::endl;
-            delete plane;
-            return false;
-        }
-
-        std::cout << "#" << code << " was added to Airport " << name << " at " << location << std::endl;
-        return true;
+    void IncrementTimer(int interval = 1) {
+        timer += interval;
     }
 
-    bool Remove(int code) {
-        Plane* plane = FindPlaneByCode(code);
-        if (plane) {
-            std::string location = plane->getLocation();
-            if (location == "in_air")
-                m_pOutputPlane = nullptr;
-            else if (location == "landing")
-                RemoveFromList(landingPlanes, code);
-            else if (location == "taking_off")
-                RemoveFromList(takingoffPlanes, code);
-
-            delete plane;
-            std::cout << "#" << code << " was removed from Airport " << name << " at " << location << std::endl;
-            return true;
-        }
-
-        std::cout << "#" << code << " was not found in the model" << std::endl;
-        return false;
+    void IncrementSuccessfulLandings() {
+        successfulLandings++;
     }
 
+    void IncrementSuccessfulTakeoffs() {
+        successfulTakeoffs++;
+    }
+
+    void IncrementCrashes() {
+        crashes++;
+    }
+
+    void Print() const {
+        std::cout << "Time: " << timer << "m" << std::endl;
+        std::cout << "Successful Landings: " << successfulLandings << std::endl;
+        std::cout << "Successful Takeoffs: " << successfulTakeoffs << std::endl;
+        std::cout << "Crashes: " << crashes << std::endl;
+    }
+};
+
+class PlanesControl {
+protected:
+    Stat& stat;
+    std::vector<Plane*> m_Planes;
+
+public:
+    PlanesControl(Stat& rStat) : stat(rStat) {}
+};
+
+class AirControl : public PlanesControl {
+public:
+    AirControl(Stat& rStat) : PlanesControl(rStat) {}
+
+    void Add(Plane* p) {
+        if (p) {
+            p->getLocation() = "Air";
+            m_Planes.push_back(p);
+            std::cout << stat.getTimer() << ": #" << p->getCode() << " Ready to take off" << std::endl;
+        }
+    }
+
+    // Додатковий код для обробки інших подій
+};
+
+class GroundControl : public PlanesControl {
+public:
+    GroundControl(Stat& rStat) : PlanesControl(rStat) {}
+
+    void Add(Plane* p) {
+        if (p) {
+            p->getLocation() = "Ground";
+            m_Planes.push_back(p);
+            std::cout << stat.getTimer() << ": #" << p->getCode() << " Ready to land" << std::endl;
+        }
+    }
+
+    // Додатковий код для обробки інших подій
+};
+
+class Airport {
 private:
     std::string name;
-    Plane* m_pOutputPlane;
-    std::vector<Plane*> landingPlanes;
-    std::vector<Plane*> takingoffPlanes;
+    Stat& stat;
+    AirControl takingoffPlanes;
+    GroundControl landingPlanes;
 
-    Plane* FindPlaneByCode(int code) {
-        if (m_pOutputPlane && m_pOutputPlane->getCode() == code)
-            return m_pOutputPlane;
+public:
+    Airport(std::string _name, Stat& rStat) : name(_name), stat(rStat), takingoffPlanes(rStat), landingPlanes(rStat) {}
 
-        for (Plane* plane : landingPlanes) {
-            if (plane->getCode() == code)
-                return plane;
-        }
+    // Додатковий код для обробки інших подій
 
-        for (Plane* plane : takingoffPlanes) {
-            if (plane->getCode() == code)
-                return plane;
-        }
-
-        return nullptr;
+    void ProcessTick() {
+        // Обробка подій в аеропорту
+        // Оновлення статистики
     }
 
-    void RemoveFromList(std::vector<Plane*>& planeList, int code) {
-        for (auto it = planeList.begin(); it != planeList.end(); ++it) {
-            if ((*it)->getCode() == code) {
-                delete* it;
-                planeList.erase(it);
-                break;
-            }
-        }
+    void Print() const {
+        // Виведення інформації про аеропорт та статистики
     }
 };
 
 int main() {
-    Airport airport("MyAirport");
+    Stat stat;
+    Airport port("Lviv", stat);
 
-    while (true) {
-        std::cout << "Enter a command (Add/Remove/Exit): ";
-        std::string command;
-        std::cin >> command;
-
-        if (command == "Add") {
-            int code;
-            std::string location;
-
-            std::cout << "Enter plane code: ";
-            std::cin >> code;
-
-            std::cout << "Enter location (in_air/landing/taking_off): ";
-            std::cin >> location;
-
-            airport.Add(code, location);
-        }
-        else if (command == "Remove") {
-            int code;
-
-            std::cout << "Enter plane code: ";
-            std::cin >> code;
-
-            airport.Remove(code);
-        }
-        else if (command == "Exit") {
-            break;
-        }
+    for (int i = 0; i < 25; i++) {
+        // Обробка одного такту роботи моделі
+        port.ProcessTick();
+        stat.IncrementTimer();
     }
+
+    std::cout << "Final state at " << stat.getTimer() << "m:" << std::endl;
+    port.Print();
+    stat.Print();
 
     return 0;
 }
