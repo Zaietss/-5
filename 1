@@ -1,129 +1,113 @@
 #include <iostream>
-#include <string>
 #include <vector>
+#include <string>
+#include <cstdlib>
+#include <climits>
 
-class Plane {
-public:
-    Plane(int code, std::string location) : code(code), location(location) {}
-    int getCode() const { return code; }
-    std::string getLocation() const { return location; }
-
-private:
-    int code;
-    std::string location;
-};
-
-class Stat {
-private:
-    int timer = 0;
-    int successfulLandings = 0;
-    int successfulTakeoffs = 0;
-    int crashes = 0;
-
-public:
-    int getTimer() const { return timer; }
-    int getSuccessfulLandings() const { return successfulLandings; }
-    int getSuccessfulTakeoffs() const { return successfulTakeoffs; }
-    int getCrashes() const { return crashes; }
-
-    void IncrementTimer(int interval = 1) {
-        timer += interval;
-    }
-
-    void IncrementSuccessfulLandings() {
-        successfulLandings++;
-    }
-
-    void IncrementSuccessfulTakeoffs() {
-        successfulTakeoffs++;
-    }
-
-    void IncrementCrashes() {
-        crashes++;
-    }
-
-    void Print() const {
-        std::cout << "Time: " << timer << "m" << std::endl;
-        std::cout << "Successful Landings: " << successfulLandings << std::endl;
-        std::cout << "Successful Takeoffs: " << successfulTakeoffs << std::endl;
-        std::cout << "Crashes: " << crashes << std::endl;
-    }
-};
-
-class PlanesControl {
-protected:
-    Stat& stat;
-    std::vector<Plane*> m_Planes;
-
-public:
-    PlanesControl(Stat& rStat) : stat(rStat) {}
-};
-
-class AirControl : public PlanesControl {
-public:
-    AirControl(Stat& rStat) : PlanesControl(rStat) {}
-
-    void Add(Plane* p) {
-        if (p) {
-            p->getLocation() = "Air";
-            m_Planes.push_back(p);
-            std::cout << stat.getTimer() << ": #" << p->getCode() << " Ready to take off" << std::endl;
-        }
-    }
-
-    // Додатковий код для обробки інших подій
-};
-
-class GroundControl : public PlanesControl {
-public:
-    GroundControl(Stat& rStat) : PlanesControl(rStat) {}
-
-    void Add(Plane* p) {
-        if (p) {
-            p->getLocation() = "Ground";
-            m_Planes.push_back(p);
-            std::cout << stat.getTimer() << ": #" << p->getCode() << " Ready to land" << std::endl;
-        }
-    }
-
-    // Додатковий код для обробки інших подій
-};
+class Flight;
 
 class Airport {
-private:
-    std::string name;
-    Stat& stat;
-    AirControl takingoffPlanes;
-    GroundControl landingPlanes;
-
 public:
-    Airport(std::string _name, Stat& rStat) : name(_name), stat(rStat), takingoffPlanes(rStat), landingPlanes(rStat) {}
+    static const int num_airports = 5;  // Визначення глобальної константи
+    static std::vector<Airport> airports;  // Визначення глобального вектору аеропортів
 
-    // Додатковий код для обробки інших подій
+    Airport(const std::string& name, int index) : name(name), active(true), index(index) {}
 
-    void ProcessTick() {
-        // Обробка подій в аеропорту
-        // Оновлення статистики
+    void close() {
+        active = false;
     }
 
-    void Print() const {
-        // Виведення інформації про аеропорт та статистики
+    void reopen() {
+        active = true;
     }
+
+    void addFlight(const Flight& flight) {
+        flights.push_back(flight);
+    }
+
+    void redirectFlights();
+
+    int findNearestAirport();
+
+    std::string name;
+    bool active;
+    int index;
+    std::vector<Flight> flights;
 };
 
-int main() {
-    Stat stat;
-    Airport port("Lviv", stat);
-
-    for (int i = 0; i < 25; i++) {
-        // Обробка одного такту роботи моделі
-        port.ProcessTick();
-        stat.IncrementTimer();
+class Flight {
+public:
+    Flight(const std::string& destination) : destination(destination), fuel(100) {
+        // Генеруємо випадкове значення для номера аеропорту призначення
+        destination_airport = rand() % Airport::num_airports;
     }
 
-    std::cout << "Final state at " << stat.getTimer() << "m:" << std::endl;
-    port.Print();
-    stat.Print();
+    void refuel() {
+        fuel = 100;
+    }
+
+    std::string destination;
+    int destination_airport; // Номер аеропорту призначення
+    int fuel;
+};
+
+std::vector<Airport> Airport::airports;  // Ініціалізація статичного вектора аеропортів
+
+void Airport::redirectFlights() {
+    for (Flight& flight : flights) {
+        if (flight.destination_airport == index) {
+            // Перенаправити рейс до найближчого активного аеропорту
+            int nearestAirport = findNearestAirport();
+            flight.destination_airport = nearestAirport;
+            airports[nearestAirport].addFlight(flight);
+        }
+    }
+}
+
+int Airport::findNearestAirport() {
+    int nearestAirport = -1;
+    int minDistance = INT_MAX;
+
+    for (int i = 0; i < num_airports; i++) {
+        if (i != index && airports[i].active) {
+            // Обчислюємо відстань (замість цього можна використовувати реальний розрахунок відстані)
+            int distance = std::abs(index - i);
+            if (distance < minDistance) {
+                nearestAirport = i;
+                minDistance = distance;
+            }
+        }
+    }
+
+    return nearestAirport;
+}
+
+int main() {
+    // Ініціалізуємо аеропорти
+    for (int i = 0; i < Airport::num_airports; i++) {
+        Airport::airports.push_back(Airport("Airport" + std::to_string(i), i));
+    }
+
+    // Додамо рейси до аеропортів
+    for (int i = 0; i < Airport::num_airports; i++) {
+        for (int j = 0; j < 5; j++) {
+            Flight flight("Airport" + std::to_string(rand() % Airport::num_airports));
+            Airport::airports[i].addFlight(flight);
+        }
+    }
+
+    // Закриваємо перший аеропорт
+    Airport::airports[0].close();
+
+    // Перенаправляємо рейси в закритому аеропорту
+    for (int i = 1; i < Airport::num_airports; i++) {
+        Airport::airports[i].redirectFlights();
+    }
+
+    // Виводимо стан аеропортів
+    for (const auto& airport : Airport::airports) {
+        std::cout << airport.name << " is " << (airport.active ? "open" : "closed") << std::endl;
+    }
 
     return 0;
 }
